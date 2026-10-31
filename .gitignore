@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Secrets (Hugging Face token, AWS keys, SSH keys)
+.env
+*.pem
+*.key
+hf-token*
+*secret*.yaml
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Editors
+.vscode/
+.idea/

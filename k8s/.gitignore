@@ -1,0 +1,3 @@
+# Never commit Kubernetes Secrets (e.g. the Hugging Face token)
+*secret*.yaml
+*-token*
