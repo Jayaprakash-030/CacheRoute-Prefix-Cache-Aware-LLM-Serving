@@ -21,7 +21,7 @@ Setup, model testing, and single-pod work happen on the small machine first, so 
 - [ ] If Llama-3.1-8B is a model candidate, request access on Hugging Face now - access is already granted
 - [x] Read llm-d's docs for its prefix-cache-aware "well-lit path" and pick a supported gateway - Standalone Mode, no gateway
 - [x] Create the repo with the folder layout from CLAUDE.md - Done, pushed to GitHub
-- [ ] 🟢S Launch a g5.2xlarge using an AMI with NVIDIA drivers preinstalled (e.g. AWS Deep Learning AMI), in us-east-1
+- [ ] 🟢S Launch a g5.2xlarge using an AMI with NVIDIA drivers preinstalled (e.g. AWS Deep Learning AMI), in us-east-2
 - [ ] 🟢S Confirm the GPU is visible on the machine
 - [ ] 🟢S Install k3s, NVIDIA container toolkit, and the NVIDIA device plugin
 - [ ] 🟢S Confirm Kubernetes reports 1 GPU available on the node
