@@ -38,12 +38,11 @@ Project 2 of my LLM inference learning track (Notion: "LLM Inference & llm-d —
 - Orchestration: k3s
 - GPU access in k3s: NVIDIA drivers + container toolkit + NVIDIA device plugin
 - Baseline router: round-robin, using a plain Kubernetes Service
-- Prefix-aware router: llm-d's Endpoint Picker (EPP), behind a gateway, with the 4 pods grouped in an InferencePool
+- Prefix-aware router: llm-d Router (EPP) in Standalone Mode with the Envoy sidecar (no separate gateway), 4 pods grouped in an InferencePool. Installed with Helm.
 - Metrics: Prometheus scraping each vLLM pod's metrics endpoint (Grafana optional)
 - Autoscaling: Kubernetes HPA, 1 to 4 replicas
 
 **Open decisions** (move to Decision log once settled)
-- Gateway implementation to use with EPP (one of those supported by llm-d)
 - Model: Llama-3-8B (matches my notes, but tight on 24 GB and gated on Hugging Face) vs a smaller ungated model such as a Qwen 1.5B–3B
 - Load generator: my own script vs vLLM's built-in benchmark tool
 - HPA scaling signal: which metric (e.g. waiting requests per pod), and Prometheus Adapter vs KEDA to feed it to the HPA
@@ -57,7 +56,7 @@ Planned layout. Mark each entry as created when it exists, and add a one-line de
 | `CLAUDE.md` | This file: project context for AI assistants | created |
 | `plan.md` | Phased plan with checklists | created |
 | `README.md` | Public project overview and results | not created |
-| `k8s/` | Kubernetes manifests: vLLM deployment, Service, gateway, InferencePool, EPP config, Prometheus, HPA | created (empty) |
+| `k8s/` | Kubernetes manifests: vLLM deployment, Service, router (Standalone), InferencePool, EPP config, Prometheus, HPA | created (empty) |
 | `loadgen/` | Multi-turn load generator | created (empty) |
 | `bench/results/` | Raw benchmark output, one folder per run | created (empty) |
 | `bench/analysis/` | Notebooks or scripts that turn results into charts | created (empty) |
@@ -71,11 +70,17 @@ Planned layout. Mark each entry as created when it exists, and add a one-line de
 - **TPOT:** time per output token after the first (decode speed). Should barely change.
 - **Cache hit rate:** share of prompt tokens found already cached. vLLM reports it.
 - **P50 / P99:** typical request / slowest 1 in 100. Report percentiles, never averages alone.
-- **Gateway:** the single entry point that receives all traffic and asks EPP which pod to send each request to.
+- **Gateway:** an optional single front door that receives all traffic and asks EPP which pod to send each request to. We don't use one: the router bundles its own proxy (see Standalone Mode).
+- **Standalone Mode:** the llm-d router deployed with its own Envoy sidecar proxy, with no separate gateway.
+- **Envoy sidecar:** a small proxy running next to the router that forwards each request to the pod the router picked.
 - **InferencePool:** a Kubernetes object grouping the pods that serve the same model, so EPP knows which pods to choose from.
 - **EPP (Endpoint Picker):** llm-d's routing engine; scores pods on cache affinity, KV cache usage, and queue length.
 - **KV-events:** messages vLLM sends as cache blocks are created and removed; precise mode uses them.
 - **Hot-spotting:** too many requests piling onto one pod because it holds a popular prefix. The router must weigh load as well as cache match to avoid it.
+
+## Future idea: agent workload (stretch, after Phase 4)
+
+Chat is the core result. Once it is done, add a second workload profile that mimics AI agents. Agents suit prefix routing well: each step resends a growing history plus a long block of tool definitions, many agents share the same system prompt and tools, and pauses for tool calls may let a pod evict a conversation's cache before the next step. Keep the load generator configurable by workload profile so this is a settings change, not a rewrite. Details in `plan.md` under "Stretch: agent workload".
 
 ## Benchmark rules
 
@@ -86,14 +91,15 @@ Planned layout. Mark each entry as created when it exists, and add a one-line de
 
 ## Current status
 
-- **Phase:** 0 (setup), not started
-- **Last session:** none yet
-- **Next step:** submit the quota increase from 8 to 48 vCPUs, set budget alerts, then start setup on the g5.2xlarge
+- **Phase:** 0 (setup), in progress
+- **Last session:** 2026-10-31: folder layout and `.gitignore` files created, repo pushed to GitHub, gateway decision made (Standalone Mode). Quota increase requested (pending), budget alerts set, Hugging Face access granted.
+- **Next step:** launch the g5.2xlarge and set up GPU + k3s, or start the load generator on the laptop (free)
 
 ## Decision log
 
 Newest first. One line each: date, decision, one-phrase reason.
 
+- 2026-10-31: llm-d Router in Standalone Mode (Envoy sidecar), no separate gateway. Default tested path, simplest on single-node k3s. Revisit agentgateway only if time allows.
 - 2026-10-31: Setup, model testing, and single-pod work start on a g5.2xlarge while the quota increase for the g5.12xlarge is pending.
 - 2026-10-31: Prefix-aware routing uses llm-d's EPP; round-robin baseline is a plain Kubernetes Service.
 - 2026-10-31: Project started. Hardware, k3s, vLLM, round-robin baseline, Prometheus, HPA fixed by the original plan.
@@ -102,7 +108,11 @@ Newest first. One line each: date, decision, one-phrase reason.
 
 Add problems hit and how they were fixed, so they aren't debugged twice.
 
-- (none yet)
+- llm-d precise mode: vLLM `--block-size` must be 64 and match the router's `blockSizeTokens`.
+- llm-d precise mode: the router's `modelName` must exactly match the served model, or render requests are rejected.
+- `peakPrefillThroughput` in the router values was measured on H100s; re-measure on A10G with the guide's calibration step.
+- The router runs as a single replica (its load accounting is per-process).
+- Render endpoints (`/v1/*/render`) need a recent vLLM (the guide uses 0.30); check the image tag.
 
 ## Runbook
 

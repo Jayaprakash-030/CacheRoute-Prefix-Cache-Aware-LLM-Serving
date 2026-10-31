@@ -19,15 +19,15 @@ Setup, model testing, and single-pod work happen on the small machine first, so 
 - [ ] Request AWS quota increase: "Running On-Demand G and VT instances" from 8 to 48 vCPUs, with a short use case (can take hours to days, so do this first) -  Requested
 - [ ] Set up AWS budget alerts: monthly $150, daily $25 - Done
 - [ ] If Llama-3.1-8B is a model candidate, request access on Hugging Face now - access is already granted
-- [ ] Read llm-d's docs for its prefix-cache-aware "well-lit path" and pick a supported gateway
-- [ ] Create the repo with the folder layout from CLAUDE.md
+- [x] Read llm-d's docs for its prefix-cache-aware "well-lit path" and pick a supported gateway - Standalone Mode, no gateway
+- [x] Create the repo with the folder layout from CLAUDE.md - Done, pushed to GitHub
 - [ ] 🟢S Launch a g5.2xlarge using an AMI with NVIDIA drivers preinstalled (e.g. AWS Deep Learning AMI), in us-east-1
 - [ ] 🟢S Confirm the GPU is visible on the machine
 - [ ] 🟢S Install k3s, NVIDIA container toolkit, and the NVIDIA device plugin
 - [ ] 🟢S Confirm Kubernetes reports 1 GPU available on the node
 - [ ] Stop the instance; record every working setup command in the CLAUDE.md Runbook (you'll repeat them on the big machine)
 
-**Done when:** k3s sees the GPU on the small machine, the quota request is submitted, and the gateway choice is in the Decision log.
+**Done when:** k3s sees the GPU on the small machine, the quota request is submitted, and the router deployment choice is in the Decision log.
 
 ## Phase 1 — vLLM on k3s (4–8 hrs)
 
@@ -69,12 +69,13 @@ If the quota is still pending after 1a, continue with Phase 2 and the laptop par
 ## Phase 3 — Routing with EPP (8–12 hrs) 💻 then 🟢S / 🟢B
 
 - [ ] Write a short design note in `docs/`: how EPP scores pods (prefix match, KV cache usage, queue length), how the scores are combined, and how approximate and precise prefix modes differ
-- [ ] Prepare the manifests on the laptop: gateway, InferencePool for the 4 vLLM pods, EPP with approximate prefix scoring
-- [ ] 🟢S Optional: deploy gateway, InferencePool, and EPP with the single pod to check the pieces connect before moving to the big machine
-- [ ] 🟢B Deploy the gateway, InferencePool, and EPP on k3s
+- [ ] Prepare the manifests on the laptop: router (Standalone Mode), InferencePool for the 4 vLLM pods, EPP with approximate prefix scoring
+- [ ] 🟢S Optional: deploy router, InferencePool, and EPP with the single pod to check the pieces connect before moving to the big machine
+- [ ] 🟢B Deploy the router (Standalone), InferencePool, and EPP on k3s
 - [ ] 🟢B Confirm follow-up turns of one conversation land on the same pod (check EPP logs)
 - [ ] 🟢B Confirm the round-robin baseline still works by sending traffic straight to the Kubernetes Service
 - [ ] 🟢B Switch EPP to precise mode (vLLM sending KV-events) and confirm it routes correctly
+- [ ] 🟢B Calibrate `peakPrefillThroughput` for the A10G (llm-d calibration step; the default was measured on H100s)
 - [ ] Record how to switch between the three setups in the CLAUDE.md Runbook
 
 **Done when:** round-robin, EPP approximate, and EPP precise can each be selected for a benchmark run, and routing decisions are visible in logs.
@@ -110,6 +111,18 @@ If the quota is still pending after 1a, continue with Phase 2 and the laptop par
 - [ ] Confirm the instance is stopped or terminated and no extra volumes are left running
 
 **Done when:** someone could read the README and understand the result in under two minutes.
+
+## Stretch: agent workload (only after Phase 4, if time and GPU budget allow)
+
+Why: agents are a strong fit for prefix-aware routing. Each step resends a growing history plus a long tool-definition block, many agents share one system prompt, and tool-call pauses can let a pod evict a conversation's cache before the next step.
+
+- [ ] In Phase 2, keep the load generator configurable by workload profile (chat is the default) so adding agents is a settings change
+- [ ] Design the agent profile: long fixed prefix (system prompt + tool definitions), 5–10 steps per task, short tool-result text added per step, pause between steps
+- [ ] Run a reduced sweep (round-robin vs the better EPP mode) on the agent profile
+- [ ] Add an "agents" section to the report: does the gap widen, and does the pause between steps hurt cache hits?
+- [ ] Optional reading: llm-d's experimental Agentic API and turn-priority fairness guides
+
+Not part of the core deliverable. Do not let it delay Phases 3–6.
 
 ---
 
