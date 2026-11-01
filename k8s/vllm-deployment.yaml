@@ -8,6 +8,8 @@ metadata:
     app: vllm
 spec:
   replicas: 1                      # becomes 4 on the big machine (Phase 1b)
+  strategy:
+    type: Recreate                 # stop the old pod before starting the new one; every GPU is in use, so a rolling update would hang in Pending
   selector:
     matchLabels:
       app: vllm                    # must match the pod labels below
