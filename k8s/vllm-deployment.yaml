@@ -44,6 +44,12 @@ spec:
           resources:
             limits:
               nvidia.com/gpu: 1                    # exactly one GPU per pod
+          readinessProbe:                          # pod counts as Ready (1/1) only when this passes
+            httpGet:
+              path: /health                        # vLLM returns 200 here once the model is loaded and serving
+              port: http
+            periodSeconds: 5                       # check every 5 s
+            failureThreshold: 3                    # 3 failures in a row marks the pod NotReady again (it is not killed)
           volumeMounts:
             - name: model-cache
               mountPath: /models

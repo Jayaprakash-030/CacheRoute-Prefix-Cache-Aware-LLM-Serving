@@ -55,7 +55,7 @@ Planned layout. Mark each entry as created when it exists, and add a one-line de
 | `CLAUDE.md` | This file: project context for AI assistants | created |
 | `plan.md` | Phased plan with checklists | created |
 | `README.md` | Public project overview and results | not created |
-| `k8s/` | Kubernetes manifests: vLLM deployment, Service, router (Standalone), InferencePool, EPP config, Prometheus, HPA | created (empty) |
+| `k8s/` | Kubernetes manifests: vLLM deployment, Service, router (Standalone), InferencePool, EPP config, Prometheus, HPA | in progress (`vllm-deployment.yaml`, `vllm-service.yaml` done) |
 | `loadgen/` | Multi-turn load generator and fake vLLM test server (`fake_server.py`, `client.py`, `conversation.py`, `run_load.py`, `requirements.txt`, local `.venv`) | in progress |
 | `bench/results/` | Raw benchmark output, one folder per run | created (empty) |
 | `bench/analysis/` | Notebooks or scripts that turn results into charts | created (empty) |
@@ -90,9 +90,10 @@ Chat is the core result. Once it is done, add a second workload profile that mim
 
 ## Current status
 
-- **Phase:** 0 (setup) complete; Phase 2 (load generator) built and tested on the laptop, only the GPU smoke test remains
+- **Phase:** 0 complete; Phase 1a nearly done (one vLLM pod serving Llama-3.1-8B on the g5.2xlarge, cache hits confirmed); Phase 2 built on the laptop, GPU smoke test remains
 - **Last session:** 2026-10-31: folder layout and `.gitignore` files created, repo pushed to GitHub, gateway decision made (Standalone Mode), `docs/workload.md` written, load generator built (`fake_server.py`, `client.py`, `conversation.py`, `run_load.py`) and tested against the fake server. g5.2xlarge launched (since terminated); k3s, NVIDIA toolkit and device plugin working, Kubernetes reports 1 GPU. Quota increase requested (pending), budget alerts set, Hugging Face access granted.
-- **Next step:** Phase 1a, then the Phase 2 smoke test: launch a g5.2xlarge following `docs/aws-setup.md`, run one vLLM pod, then point `loadgen/run_load.py` at it at a low rate. Laptop-only alternative: write the Phase 3 design note in `docs/`.
+- **Session 2026-11-01:** Wrote `k8s/vllm-deployment.yaml` and `k8s/vllm-service.yaml`; pod served Llama-3.1-8B through the Service. KV cache 3.2 GiB = 26,176 tokens (1636 blocks of 16). Repeated 2,002-token prompt: cold 0.63 s vs warm 0.18 s, 2,000 of 2,002 tokens hit the cache. Fixed two crashes (see Gotchas).
+- **Next step:** finish 1a (add readiness probe, time a clean cached restart, stop the instance), then the Phase 2 smoke test: launch a g5.2xlarge following `docs/aws-setup.md`, run one vLLM pod, then point `loadgen/run_load.py` at it at a low rate. Laptop-only alternative: write the Phase 3 design note in `docs/`.
 
 ## Decision log
 
@@ -108,6 +109,10 @@ Newest first. One line each: date, decision, one-phrase reason.
 
 Add problems hit and how they were fixed, so they aren't debugged twice.
 
+- A Service named `vllm` makes Kubernetes inject `VLLM_PORT=tcp://...` into pods, and vLLM crashes at the end of startup (`VLLM_PORT ... appears to be a URI`). Fix: `enableServiceLinks: false` in the pod spec. The "Unknown vLLM environment variable" startup warnings are the early sign.
+- With one GPU, the default rolling update leaves the new pod `Pending` (the old pod holds the GPU). Fix: `strategy: Recreate`. Same on the big machine. Changing the strategy on an existing Deployment may need `kubectl patch ... rollingUpdate:null` first.
+- Without a readiness probe, `1/1 Running` only means the container started, not that the model is loaded. Check the log for `Application startup complete`.
+- Pasted long one-line commands wrap in the terminal and break; define shell variables and keep lines short.
 - k3s already creates a `nvidia` RuntimeClass on its own when it finds the toolkit, so no manual RuntimeClass step is needed. The device plugin pod still needs `runtimeClassName: nvidia` patched in, or it can't see the GPU.
 - When pasting multi-line shell blocks (heredocs) from chat, indentation can break the closing `EOF` and leave the shell stuck at a `>` prompt. Press Ctrl+C and use a single-line command instead.
 - llm-d precise mode: vLLM `--block-size` must be 64 and match the router's `blockSizeTokens`.
@@ -121,6 +126,8 @@ Add problems hit and how they were fixed, so they aren't debugged twice.
 Commands confirmed to work go here (start/stop instance, deploy, run a benchmark).
 
 Full step-by-step machine setup (launch, GPU check, k3s, device plugin, verify, stop/restart, troubleshooting): `docs/aws-setup.md`. Confirmed on the g5.2xlarge, 2026-10-31. Repeat it for every new instance and for the g5.12xlarge.
+
+vLLM on the instance (from `k8s/`): create the `hf-token` secret (aws-setup.md step 6), then `sudo k3s kubectl apply -f vllm-deployment.yaml -f vllm-service.yaml`. Watch with `sudo k3s kubectl logs -f deploy/vllm` until `Application startup complete`. Test: `curl http://<CLUSTER-IP>:8000/v1/models` (IP from `kubectl get svc vllm`). Cache counters: `curl -s http://<CLUSTER-IP>:8000/metrics | grep -E "^vllm:prefix_cache_(queries|hits)_total"`.
 
 ## Keeping this file updated
 

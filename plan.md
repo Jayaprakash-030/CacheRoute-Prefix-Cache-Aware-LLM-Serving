@@ -33,14 +33,14 @@ Setup, model testing, and single-pod work happen on the small machine first, so 
 
 ### 1a. One replica on the small machine 🟢S
 
-- [ ] Write a Deployment for vLLM: 1 replica, 1 GPU, prefix caching on
-- [ ] Store model weights on the instance's disk so pods don't re-download them on every start
-- [ ] Add a Kubernetes Service in front of the pod
-- [ ] Send a test request through the Service
-- [ ] Try each candidate model; note how much KV cache space vLLM reports at startup and how many tokens that holds
-- [ ] Decide the model and add it to the Decision log
-- [ ] Confirm the pod exposes its metrics endpoint and that cache hit numbers change after repeated prompts
-- [ ] Note how long the pod takes to start and load the model (needed later for autoscaling)
+- [x] Write a Deployment for vLLM: 1 replica, 1 GPU, prefix caching on
+- [x] Store model weights on the instance's disk so pods don't re-download them on every start
+- [x] Add a Kubernetes Service in front of the pod
+- [x] Send a test request through the Service
+- [x] Try each candidate model; note how much KV cache space vLLM reports at startup and how many tokens that holds (model chosen up front: Llama-3.1-8B, 3.2 GiB = 26,176 tokens)
+- [x] Decide the model and add it to the Decision log
+- [x] Confirm the pod exposes its metrics endpoint and that cache hit numbers change after repeated prompts
+- [ ] Note how long the pod takes to start (first start ~3 min incl. 129 s download; clean cached restart still to time) and load the model (needed later for autoscaling)
 
 **Done when:** one healthy pod serving the chosen model, with metrics visible.
 
