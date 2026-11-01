@@ -83,7 +83,23 @@ sudo k3s kubectl describe node | grep -i nvidia.com/gpu
 
 Success: the plugin pod is `Running` (1/1), and `nvidia.com/gpu: 1` shows twice (Capacity and Allocatable). On the big machine it should say **4**.
 
-## 6. When you are done
+## 6. Create the Hugging Face token Secret
+
+Llama 3.1 is gated, so the vLLM pod needs your Hugging Face token to download it. A Kubernetes Secret stores the token inside the cluster, and the Deployment reads it as `HF_TOKEN`. Skip this step if you are only checking the GPU.
+
+1. Get a read-only token from huggingface.co → Settings → Access Tokens. Your account already has Llama access. Keep the token in a password manager.
+2. Type `read -s HFT` and paste the token. Nothing shows on screen, and the token stays out of your shell history. Press Enter.
+3. Create the Secret:
+
+```
+sudo k3s kubectl create secret generic hf-token --from-literal=token="$HFT"
+```
+
+4. Check it exists (this prints the name, not the value): `sudo k3s kubectl get secret hf-token`
+
+The name `hf-token` and key `token` must match `k8s/vllm-deployment.yaml`. A *stopped* instance keeps the Secret; a *terminated* one loses it, so repeat this step on a new instance. Never put the token in the repo or in chat. If it leaks, revoke it on Hugging Face right away.
+
+## 7. When you are done
 
 EC2 console → select the instance → Instance state → **Stop instance** (keeps the disk) or **Terminate instance** (deletes it). Check the state reads Stopped or Terminated before you close the browser.
 

@@ -58,10 +58,10 @@ If the quota is still pending after 1a, continue with Phase 2 and the laptop par
 
 ## Phase 2 — Load generator (4–6 hrs) 💻 then 🟢
 
-- [ ] Design the workload: number of users, turns per conversation, shared system prompt length, new text per turn, output length
-- [ ] Build the load generator: simulated users having multi-turn chats, each turn resending the full history, requests arriving at a set rate
-- [ ] Record per request: start time, time of first token, time of last token, token counts, which pod served it
-- [ ] Test it on the laptop against a simple stand-in server so no GPU time is spent
+- [x] Design the workload: number of users, turns per conversation, shared system prompt length, new text per turn, output length
+- [x] Build the load generator: simulated users having multi-turn chats, each turn resending the full history, requests arriving at a set rate
+- [x] Record per request: start time, time of first token, time of last token, token counts, which pod served it
+- [x] Test it on the laptop against a simple stand-in server so no GPU time is spent
 - [ ] 🟢S Run a smoke test against the single pod at a low rate
 
 **Done when:** one command runs a multi-turn workload at a chosen rate and saves per-request results.

@@ -1,0 +1,57 @@
+# vLLM Deployment: 1 replica, 1 GPU, prefix caching on.
+# Phase 1a. Apply with: sudo k3s kubectl apply -f vllm-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm
+  labels:
+    app: vllm
+spec:
+  replicas: 1                      # becomes 4 on the big machine (Phase 1b)
+  selector:
+    matchLabels:
+      app: vllm                    # must match the pod labels below
+  template:
+    metadata:
+      labels:
+        app: vllm                  # the Service (next step) finds pods by this label
+    spec:
+      runtimeClassName: nvidia     # lets the container see the GPU (k3s created this class)
+      containers:
+        - name: vllm
+          # TODO: confirm this tag exists on Docker Hub (vllm/vllm-openai) before applying
+          image: vllm/vllm-openai:v0.30.0
+          args:
+            - --model=meta-llama/Llama-3.1-8B-Instruct   # decided model (gated on Hugging Face)
+            - --enable-prefix-caching              # reuse cached KV blocks for shared prompt prefixes
+            - --max-model-len=8192                 # cap context length so the KV cache fits in 24 GB
+            - --gpu-memory-utilization=0.90        # share of GPU memory vLLM may claim
+            - --port=8000
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: HF_HOME                        # where Hugging Face downloads model files
+              value: /models
+            - name: HF_TOKEN                       # Llama is gated, so the download needs your token
+              valueFrom:
+                secretKeyRef:
+                  name: hf-token                   # create first: kubectl create secret generic hf-token --from-literal=token=<your token>
+                  key: token
+          resources:
+            limits:
+              nvidia.com/gpu: 1                    # exactly one GPU per pod
+          volumeMounts:
+            - name: model-cache
+              mountPath: /models
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: model-cache
+          hostPath:                                # a folder on the instance's own disk
+            path: /opt/models                      # survives pod restarts, so no re-download
+            type: DirectoryOrCreate
+        - name: shm
+          emptyDir:
+            medium: Memory                         # vLLM needs more shared memory than the default 64 MB
+            sizeLimit: 2Gi

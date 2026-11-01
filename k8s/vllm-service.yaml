@@ -1,0 +1,17 @@
+# Service: one stable address in front of the vLLM pod(s).
+# With 4 replicas this same Service becomes the round-robin baseline.
+# Apply with: sudo k3s kubectl apply -f vllm-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm
+  labels:
+    app: vllm
+spec:
+  type: ClusterIP            # reachable only inside the cluster (default type)
+  selector:
+    app: vllm                # sends traffic to pods with this label (set in the Deployment)
+  ports:
+    - name: http
+      port: 8000             # port other things in the cluster call
+      targetPort: http       # the container port named "http" in the Deployment (8000)

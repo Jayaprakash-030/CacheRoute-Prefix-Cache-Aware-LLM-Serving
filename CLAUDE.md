@@ -43,7 +43,6 @@ Project 2 of my LLM inference learning track (Notion: "LLM Inference & llm-d —
 - Autoscaling: Kubernetes HPA, 1 to 4 replicas
 
 **Open decisions** (move to Decision log once settled)
-- Model: Llama-3-8B (matches my notes, but tight on 24 GB and gated on Hugging Face) vs a smaller ungated model such as a Qwen 1.5B–3B
 - Load generator: my own script vs vLLM's built-in benchmark tool
 - HPA scaling signal: which metric (e.g. waiting requests per pod), and Prometheus Adapter vs KEDA to feed it to the HPA
 
@@ -91,14 +90,15 @@ Chat is the core result. Once it is done, add a second workload profile that mim
 
 ## Current status
 
-- **Phase:** 0 (setup) complete; Phase 2 (load generator) next on the laptop
-- **Last session:** 2026-10-31: folder layout and `.gitignore` files created, repo pushed to GitHub, gateway decision made (Standalone Mode), `docs/workload.md` written. g5.2xlarge launched (since terminated); k3s, NVIDIA toolkit and device plugin working, Kubernetes reports 1 GPU. Quota increase requested (pending), budget alerts set, Hugging Face access granted.
-- **Next step:** Phase 2 on the laptop: fake streaming server, then the load generator in `loadgen/` (Python, asyncio + httpx). Phase 1a (vLLM on the small machine) is the next GPU session.
+- **Phase:** 0 (setup) complete; Phase 2 (load generator) built and tested on the laptop, only the GPU smoke test remains
+- **Last session:** 2026-10-31: folder layout and `.gitignore` files created, repo pushed to GitHub, gateway decision made (Standalone Mode), `docs/workload.md` written, load generator built (`fake_server.py`, `client.py`, `conversation.py`, `run_load.py`) and tested against the fake server. g5.2xlarge launched (since terminated); k3s, NVIDIA toolkit and device plugin working, Kubernetes reports 1 GPU. Quota increase requested (pending), budget alerts set, Hugging Face access granted.
+- **Next step:** Phase 1a, then the Phase 2 smoke test: launch a g5.2xlarge following `docs/aws-setup.md`, run one vLLM pod, then point `loadgen/run_load.py` at it at a low rate. Laptop-only alternative: write the Phase 3 design note in `docs/`.
 
 ## Decision log
 
 Newest first. One line each: date, decision, one-phrase reason.
 
+- 2026-11-01: Model is Llama-3.1-8B-Instruct (gated; needs `hf-token` secret). Matches my notes; ~16 GB weights leaves little KV cache on 24 GB, so keep `--max-model-len` modest.
 - 2026-10-31: llm-d Router in Standalone Mode (Envoy sidecar), no separate gateway. Default tested path, simplest on single-node k3s. Revisit agentgateway only if time allows.
 - 2026-10-31: Setup, model testing, and single-pod work start on a g5.2xlarge while the quota increase for the g5.12xlarge is pending.
 - 2026-10-31: Prefix-aware routing uses llm-d's EPP; round-robin baseline is a plain Kubernetes Service.
