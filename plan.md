@@ -16,16 +16,16 @@ Setup, model testing, and single-pod work happen on the small machine first, so 
 
 ## Phase 0 — Setup and decisions (3–5 hrs) 💻 + 🟢S
 
-- [ ] Request AWS quota increase: "Running On-Demand G and VT instances" from 8 to 48 vCPUs, with a short use case (can take hours to days, so do this first) -  Requested
-- [ ] Set up AWS budget alerts: monthly $150, daily $25 - Done
-- [ ] If Llama-3.1-8B is a model candidate, request access on Hugging Face now - access is already granted
+- [x] Request AWS quota increase: "Running On-Demand G and VT instances" from 8 to 48 vCPUs, with a short use case (can take hours to days, so do this first) -  Requested
+- [x] Set up AWS budget alerts: monthly $150, daily $25 - Done
+- [x] If Llama-3.1-8B is a model candidate, request access on Hugging Face now - access is already granted
 - [x] Read llm-d's docs for its prefix-cache-aware "well-lit path" and pick a supported gateway - Standalone Mode, no gateway
 - [x] Create the repo with the folder layout from CLAUDE.md - Done, pushed to GitHub
-- [ ] 🟢S Launch a g5.2xlarge using an AMI with NVIDIA drivers preinstalled (e.g. AWS Deep Learning AMI), in us-east-2
-- [ ] 🟢S Confirm the GPU is visible on the machine
-- [ ] 🟢S Install k3s, NVIDIA container toolkit, and the NVIDIA device plugin
-- [ ] 🟢S Confirm Kubernetes reports 1 GPU available on the node
-- [ ] Stop the instance; record every working setup command in the CLAUDE.md Runbook (you'll repeat them on the big machine)
+- [x] 🟢S Launch a g5.2xlarge using an AMI with NVIDIA drivers preinstalled (e.g. AWS Deep Learning AMI), in us-east-2
+- [x] 🟢S Confirm the GPU is visible on the machine
+- [x] 🟢S Install k3s, NVIDIA container toolkit, and the NVIDIA device plugin
+- [x] 🟢S Confirm Kubernetes reports 1 GPU available on the node
+- [x] Stop the instance; record every working setup command in the CLAUDE.md Runbook (you'll repeat them on the big machine)
 
 **Done when:** k3s sees the GPU on the small machine, the quota request is submitted, and the router deployment choice is in the Decision log.
 

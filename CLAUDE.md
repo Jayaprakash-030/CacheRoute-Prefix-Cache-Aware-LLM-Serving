@@ -60,7 +60,7 @@ Planned layout. Mark each entry as created when it exists, and add a one-line de
 | `loadgen/` | Multi-turn load generator | created (empty) |
 | `bench/results/` | Raw benchmark output, one folder per run | created (empty) |
 | `bench/analysis/` | Notebooks or scripts that turn results into charts | created (empty) |
-| `docs/` | Design notes and final benchmark report | created (empty) |
+| `docs/` | Design notes and final benchmark report | created (`workload.md`, `aws-setup.md`) |
 
 ## Key terms
 
@@ -91,9 +91,9 @@ Chat is the core result. Once it is done, add a second workload profile that mim
 
 ## Current status
 
-- **Phase:** 0 (setup), in progress
-- **Last session:** 2026-10-31: folder layout and `.gitignore` files created, repo pushed to GitHub, gateway decision made (Standalone Mode). Quota increase requested (pending), budget alerts set, Hugging Face access granted.
-- **Next step:** launch the g5.2xlarge and set up GPU + k3s, or start the load generator on the laptop (free)
+- **Phase:** 0 (setup) complete; Phase 2 (load generator) next on the laptop
+- **Last session:** 2026-10-31: folder layout and `.gitignore` files created, repo pushed to GitHub, gateway decision made (Standalone Mode), `docs/workload.md` written. g5.2xlarge launched (since terminated); k3s, NVIDIA toolkit and device plugin working, Kubernetes reports 1 GPU. Quota increase requested (pending), budget alerts set, Hugging Face access granted.
+- **Next step:** Phase 2 on the laptop: fake streaming server, then the load generator in `loadgen/` (Python, asyncio + httpx). Phase 1a (vLLM on the small machine) is the next GPU session.
 
 ## Decision log
 
@@ -108,6 +108,8 @@ Newest first. One line each: date, decision, one-phrase reason.
 
 Add problems hit and how they were fixed, so they aren't debugged twice.
 
+- k3s already creates a `nvidia` RuntimeClass on its own when it finds the toolkit, so no manual RuntimeClass step is needed. The device plugin pod still needs `runtimeClassName: nvidia` patched in, or it can't see the GPU.
+- When pasting multi-line shell blocks (heredocs) from chat, indentation can break the closing `EOF` and leave the shell stuck at a `>` prompt. Press Ctrl+C and use a single-line command instead.
 - llm-d precise mode: vLLM `--block-size` must be 64 and match the router's `blockSizeTokens`.
 - llm-d precise mode: the router's `modelName` must exactly match the served model, or render requests are rejected.
 - `peakPrefillThroughput` in the router values was measured on H100s; re-measure on A10G with the guide's calibration step.
@@ -118,7 +120,7 @@ Add problems hit and how they were fixed, so they aren't debugged twice.
 
 Commands confirmed to work go here (start/stop instance, deploy, run a benchmark).
 
-- (none yet)
+Full step-by-step machine setup (launch, GPU check, k3s, device plugin, verify, stop/restart, troubleshooting): `docs/aws-setup.md`. Confirmed on the g5.2xlarge, 2026-10-31. Repeat it for every new instance and for the g5.12xlarge.
 
 ## Keeping this file updated
 
