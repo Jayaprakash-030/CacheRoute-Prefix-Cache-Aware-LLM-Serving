@@ -17,6 +17,7 @@ spec:
         app: vllm                  # the Service (next step) finds pods by this label
     spec:
       runtimeClassName: nvidia     # lets the container see the GPU (k3s created this class)
+      enableServiceLinks: false    # stop Kubernetes injecting VLLM_PORT=tcp://... (from the Service named "vllm"), which crashes vLLM
       containers:
         - name: vllm
           # TODO: confirm this tag exists on Docker Hub (vllm/vllm-openai) before applying
