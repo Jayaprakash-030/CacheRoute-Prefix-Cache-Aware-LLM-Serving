@@ -57,7 +57,7 @@ Planned layout. Mark each entry as created when it exists, and add a one-line de
 | `plan.md` | Phased plan with checklists | created |
 | `README.md` | Public project overview and results | not created |
 | `k8s/` | Kubernetes manifests: vLLM deployment, Service, router (Standalone), InferencePool, EPP config, Prometheus, HPA | created (empty) |
-| `loadgen/` | Multi-turn load generator and fake vLLM test server (`fake_server.py`, `requirements.txt`, local `.venv`) | in progress |
+| `loadgen/` | Multi-turn load generator and fake vLLM test server (`fake_server.py`, `client.py`, `conversation.py`, `run_load.py`, `requirements.txt`, local `.venv`) | in progress |
 | `bench/results/` | Raw benchmark output, one folder per run | created (empty) |
 | `bench/analysis/` | Notebooks or scripts that turn results into charts | created (empty) |
 | `docs/` | Design notes and final benchmark report | created (`workload.md`, `aws-setup.md`) |
