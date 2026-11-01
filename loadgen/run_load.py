@@ -91,6 +91,7 @@ async def main(args):
         output_tokens=args.output_tokens,
         turns=tuple(args.turns),
         think_time_s=tuple(args.think_time),
+        model=args.model,
     )
     started_at = datetime.datetime.now().isoformat(timespec="seconds")
     t0 = time.monotonic()
@@ -121,6 +122,7 @@ if __name__ == "__main__":
                         help="new conversations per second (average)")
     parser.add_argument("--duration", type=float, default=30,
                         help="seconds during which new conversations start")
+    parser.add_argument("--model", default=d.model, help="model name the server serves")
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument("--system-tokens", type=int, default=d.system_prompt_tokens)
     parser.add_argument("--user-tokens", type=int, nargs=2, metavar=("MIN", "MAX"), default=d.user_tokens)

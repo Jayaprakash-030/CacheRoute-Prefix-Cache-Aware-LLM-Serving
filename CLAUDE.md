@@ -90,10 +90,10 @@ Chat is the core result. Once it is done, add a second workload profile that mim
 
 ## Current status
 
-- **Phase:** 0 complete; Phase 1a nearly done (one vLLM pod serving Llama-3.1-8B on the g5.2xlarge, cache hits confirmed); Phase 2 built on the laptop, GPU smoke test remains
+- **Phase:** 0 complete; Phase 1a complete (one vLLM pod serving Llama-3.1-8B on the g5.2xlarge, cache hits confirmed); Phase 2 built on the laptop, GPU smoke test remains
 - **Last session:** 2026-10-31: folder layout and `.gitignore` files created, repo pushed to GitHub, gateway decision made (Standalone Mode), `docs/workload.md` written, load generator built (`fake_server.py`, `client.py`, `conversation.py`, `run_load.py`) and tested against the fake server. g5.2xlarge launched (since terminated); k3s, NVIDIA toolkit and device plugin working, Kubernetes reports 1 GPU. Quota increase requested (pending), budget alerts set, Hugging Face access granted.
-- **Session 2026-11-01:** Wrote `k8s/vllm-deployment.yaml` and `k8s/vllm-service.yaml`; pod served Llama-3.1-8B through the Service. KV cache 3.2 GiB = 26,176 tokens (1636 blocks of 16). Repeated 2,002-token prompt: cold 0.63 s vs warm 0.18 s, 2,000 of 2,002 tokens hit the cache. Fixed two crashes (see Gotchas).
-- **Next step:** finish 1a (add readiness probe, time a clean cached restart, stop the instance), then the Phase 2 smoke test: launch a g5.2xlarge following `docs/aws-setup.md`, run one vLLM pod, then point `loadgen/run_load.py` at it at a low rate. Laptop-only alternative: write the Phase 3 design note in `docs/`.
+- **Session 2026-11-01:** Wrote `k8s/vllm-deployment.yaml` and `k8s/vllm-service.yaml`; pod served Llama-3.1-8B through the Service. KV cache 3.2 GiB = 26,176 tokens (1636 blocks of 16). Repeated 2,002-token prompt: cold 0.63 s vs warm 0.18 s, 2,000 of 2,002 tokens hit the cache. Fixed two crashes (see Gotchas). Added `/health` readiness probe. Clean startup with cached weights: ~103 s to Ready (first start ~3 min incl. 129 s download); needed for autoscaling.
+- **Next step:** stop the instance, then the Phase 2 smoke test: launch a g5.2xlarge following `docs/aws-setup.md`, run one vLLM pod, then point `loadgen/run_load.py` at it at a low rate. Laptop-only alternative: write the Phase 3 design note in `docs/`.
 
 ## Decision log
 

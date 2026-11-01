@@ -40,7 +40,7 @@ Setup, model testing, and single-pod work happen on the small machine first, so 
 - [x] Try each candidate model; note how much KV cache space vLLM reports at startup and how many tokens that holds (model chosen up front: Llama-3.1-8B, 3.2 GiB = 26,176 tokens)
 - [x] Decide the model and add it to the Decision log
 - [x] Confirm the pod exposes its metrics endpoint and that cache hit numbers change after repeated prompts
-- [ ] Note how long the pod takes to start (first start ~3 min incl. 129 s download; clean cached restart still to time) and load the model (needed later for autoscaling)
+- [x] Note how long the pod takes to start (cached weights: ~103 s from pod creation to Ready; first start ~3 min incl. 129 s download) and load the model (needed later for autoscaling)
 
 **Done when:** one healthy pod serving the chosen model, with metrics visible.
 

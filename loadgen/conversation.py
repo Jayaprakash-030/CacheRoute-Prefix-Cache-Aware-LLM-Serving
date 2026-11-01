@@ -33,6 +33,7 @@ class ChatProfile:
     output_tokens: int = 150
     turns: tuple = (6, 10)
     think_time_s: tuple = (1.0, 5.0)
+    model: str = "fake-model"  # real vLLM rejects names it does not serve
 
 
 def make_text(rng, n_words):
@@ -56,7 +57,7 @@ async def run_conversation(client, url, conversation_id, profile, system_prompt,
         user_text = make_text(rng, rng.randint(*profile.user_tokens))
         messages.append({"role": "user", "content": user_text})
 
-        result = await send_chat_request(client, url, messages, profile.output_tokens)
+        result = await send_chat_request(client, url, messages, profile.output_tokens, profile.model)
         result["conversation_id"] = conversation_id
         result["turn"] = turn
         results.append(result)
