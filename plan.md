@@ -62,7 +62,7 @@ If the quota is still pending after 1a, continue with Phase 2 and the laptop par
 - [x] Build the load generator: simulated users having multi-turn chats, each turn resending the full history, requests arriving at a set rate
 - [x] Record per request: start time, time of first token, time of last token, token counts, which pod served it
 - [x] Test it on the laptop against a simple stand-in server so no GPU time is spent
-- [ ] 🟢S Run a smoke test against the single pod at a low rate
+- [x] 🟢S Run a smoke test against the single pod at a low rate (11/11 ok, TTFT P50 0.098 s, TPOT P50 35 ms, cache hit rate 85%; needed a new `--model` option)
 
 **Done when:** one command runs a multi-turn workload at a chosen rate and saves per-request results.
 
