@@ -6,11 +6,9 @@
 
 **Estimated effort:** 30–45 hours, about 2–3 weeks at 2–3 hours a day.
 
-**GPU budget:** aim for 15–25 hours on the big machine (~$85–140) plus 5–10 hours on the small one (~$6–12).
+**GPU budget:** aim for 15–25 hours on the big machine (~$85–140). The small machine was only used for early setup (done, ~$6–12 spent or less).
 
-**Markers:** 💻 = laptop, no machine running. 🟢S = small machine, `g5.2xlarge` (1 A10G GPU, 8 vCPUs, ~$1.21/hr), fits the current 8-vCPU quota. 🟢B = big machine, `g5.12xlarge` (4 A10G GPUs, 48 vCPUs, ~$5.67/hr), needs the quota raised to 48.
-
-Setup, model testing, and single-pod work happen on the small machine first, so problems get debugged at $1.21/hr instead of $5.67/hr.
+**Markers:** 💻 = laptop, no machine running. 🟢B = big machine, `g5.12xlarge` (4 A10G GPUs, 48 vCPUs, ~$5.67/hr). The 48-vCPU quota is approved (2026-11-02), so all remaining GPU work happens here. 🟢S marks finished work done earlier on the small `g5.2xlarge`; it is history only.
 
 ---
 
@@ -44,7 +42,7 @@ Setup, model testing, and single-pod work happen on the small machine first, so 
 
 **Done when:** one healthy pod serving the chosen model, with metrics visible.
 
-### 1b. Four replicas on the big machine 🟢B (once the quota is approved)
+### 1b. Four replicas on the big machine 🟢B
 
 - [ ] Launch a g5.12xlarge with the same AMI
 - [ ] Repeat the setup using the Runbook commands
@@ -53,8 +51,6 @@ Setup, model testing, and single-pod work happen on the small machine first, so 
 - [ ] Send a test request to each pod individually and through the Service
 
 **Done when:** 4 healthy pods, each answering requests on its own GPU.
-
-If the quota is still pending after 1a, continue with Phase 2 and the laptop parts of Phase 3 on the small machine.
 
 ## Phase 2 — Load generator (4–6 hrs) 💻 then 🟢
 
@@ -66,11 +62,10 @@ If the quota is still pending after 1a, continue with Phase 2 and the laptop par
 
 **Done when:** one command runs a multi-turn workload at a chosen rate and saves per-request results.
 
-## Phase 3 — Routing with EPP (8–12 hrs) 💻 then 🟢S / 🟢B
+## Phase 3 — Routing with EPP (8–12 hrs) 💻 then 🟢B
 
 - [ ] Write a short design note in `docs/`: how EPP scores pods (prefix match, KV cache usage, queue length), how the scores are combined, and how approximate and precise prefix modes differ
 - [ ] Prepare the manifests on the laptop: router (Standalone Mode), InferencePool for the 4 vLLM pods, EPP with approximate prefix scoring
-- [ ] 🟢S Optional: deploy router, InferencePool, and EPP with the single pod to check the pieces connect before moving to the big machine
 - [ ] 🟢B Deploy the router (Standalone), InferencePool, and EPP on k3s
 - [ ] 🟢B Confirm follow-up turns of one conversation land on the same pod (check EPP logs)
 - [ ] 🟢B Confirm the round-robin baseline still works by sending traffic straight to the Kubernetes Service
@@ -130,11 +125,9 @@ Not part of the core deliverable. Do not let it delay Phases 3–6.
 
 | Week | Phases |
 |---|---|
-| 1 | Phase 0, Phase 1a, Phase 2 (small machine) |
-| 2 | Phase 1b, Phase 3, Phase 4 (big machine, if quota approved) |
+| 1 | Phase 0, Phase 1a, Phase 2 (small machine, done) |
+| 2 | Phase 1b, Phase 3, Phase 4 (big machine) |
 | 3 | Phase 5, Phase 6 |
-
-If the quota approval is slow, week 2 slides back; the small-machine work keeps progress going meanwhile.
 
 ## Every GPU session
 

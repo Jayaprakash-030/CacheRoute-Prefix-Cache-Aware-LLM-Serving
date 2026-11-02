@@ -22,13 +22,13 @@ spec:
       enableServiceLinks: false    # stop Kubernetes injecting VLLM_PORT=tcp://... (from the Service named "vllm"), which crashes vLLM
       containers:
         - name: vllm
-          # TODO: confirm this tag exists on Docker Hub (vllm/vllm-openai) before applying
           image: vllm/vllm-openai:v0.30.0
           args:
             - --model=meta-llama/Llama-3.1-8B-Instruct   # decided model (gated on Hugging Face)
             - --enable-prefix-caching              # reuse cached KV blocks for shared prompt prefixes
             - --max-model-len=8192                 # cap context length so the KV cache fits in 24 GB
             - --gpu-memory-utilization=0.90        # share of GPU memory vLLM may claim
+            - --block-size=64                      # cache block size in tokens; 64 in all three runs (precise routing needs it, so keep it fixed for fairness)
             - --port=8000
           ports:
             - containerPort: 8000

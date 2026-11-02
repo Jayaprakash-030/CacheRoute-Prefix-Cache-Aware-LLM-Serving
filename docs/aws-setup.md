@@ -1,20 +1,20 @@
 # AWS machine setup (from a brand new instance)
 
-Follow this top to bottom whenever you launch a new machine: the small `g5.2xlarge` (1 GPU) or the big `g5.12xlarge` (4 GPUs). Confirmed working on the g5.2xlarge on 2026-10-31. Expect 30–45 minutes, and the instance bills the whole time, so don't wander off.
+Follow this top to bottom whenever you launch a new machine. The project now uses the `g5.12xlarge` (4 GPUs); the steps were first confirmed on a 1-GPU `g5.2xlarge` on 2026-10-31 and are identical except for the GPU count. Expect 30–45 minutes, and the instance bills the whole time, so don't wander off.
 
 **Stop vs Terminate.** *Stop* keeps the disk (k3s, plugin, downloaded models all survive; you pay only for the disk, about $16/month at 200 GB). *Terminate* deletes everything, and you come back to this file. Either is fine; terminating costs you the setup time next session, stopping costs the disk fee.
 
 ## Before you launch
 
 - AWS region: **us-east-2 (Ohio)**.
-- vCPU quota ("Running On-Demand G and VT instances"): `g5.2xlarge` needs 8, `g5.12xlarge` needs 48. You can only run one of them at a time while the quota is 8.
+- vCPU quota ("Running On-Demand G and VT instances"): `g5.12xlarge` needs 48. The quota was raised to 48 on 2026-11-02, so it can be launched (and only one at a time fits).
 - A key pair (`.pem` file). Keep it **outside the repo**, and run `chmod 400 <file>.pem` once.
 
 ## 1. Launch the instance (EC2 console)
 
 1. Check the region (top right) says us-east-2. EC2 → **Launch instance**.
 2. **AMI:** search "Deep Learning OSS Nvidia Driver AMI GPU PyTorch", choose the **Ubuntu 22.04** one. An AMI is a prebuilt machine image; this one already has the NVIDIA driver and the NVIDIA container toolkit installed.
-3. **Instance type:** `g5.2xlarge` (1 GPU) or `g5.12xlarge` (4 GPUs).
+3. **Instance type:** `g5.12xlarge` (4 GPUs).
 4. **Key pair:** select your existing one.
 5. **Network:** allow SSH (port 22) from **My IP** only.
 6. **Storage:** root volume about **200 GB gp3**. Model weights and container images are big.

@@ -24,9 +24,8 @@ Project 2 of my LLM inference learning track (Notion: "LLM Inference & llm-d —
 
 | Item | Value |
 |---|---|
-| Small machine (setup, model testing, single pod) | AWS `g5.2xlarge`, us-east-2: 1 × NVIDIA A10G (24 GB), 8 vCPUs, 32 GB RAM, ~$1.21/hr |
-| Big machine (4 replicas, benchmarks) | AWS `g5.12xlarge`, us-east-2: 4 × NVIDIA A10G, 24 GB each (96 GB total), 48 vCPUs, ~$5.67/hr |
-| AWS quota | "Running On-Demand G and VT instances" is 8 vCPUs; big machine needs 48 |
+| Machine (4 replicas, benchmarks) | AWS `g5.12xlarge`, us-east-2: 4 × NVIDIA A10G, 24 GB each (96 GB total), 48 vCPUs, ~$5.67/hr |
+| AWS quota | "Running On-Demand G and VT instances" raised to 48 vCPUs (approved 2026-11-02); enough for the g5.12xlarge. The g5.2xlarge phase is finished and no longer used. |
 | Cost rule | Stop the instance at the end of every session. Budget alerts: $150/month, $25/day. |
 | Cluster | k3s (lightweight Kubernetes), single node. No EKS. |
 | Final layout | 1 node, 4 vLLM pods, each pod gets exactly 1 GPU |
@@ -59,7 +58,7 @@ Planned layout. Mark each entry as created when it exists, and add a one-line de
 | `loadgen/` | Multi-turn load generator and fake vLLM test server (`fake_server.py`, `client.py`, `conversation.py`, `run_load.py`, `requirements.txt`, local `.venv`) | done (smoke-tested on a real pod) |
 | `bench/results/` | Raw benchmark output, one folder per run | created (empty) |
 | `bench/analysis/` | Notebooks or scripts that turn results into charts | created (empty) |
-| `docs/` | Design notes and final benchmark report | created (`workload.md`, `aws-setup.md`) |
+| `docs/` | Design notes and final benchmark report | created (`workload.md`, `aws-setup.md`, `epp-design.md`) |
 
 ## Key terms
 
@@ -93,12 +92,15 @@ Chat is the core result. Once it is done, add a second workload profile that mim
 - **Phase:** 0 complete; Phase 1a complete (one vLLM pod serving Llama-3.1-8B on the g5.2xlarge, cache hits confirmed); Phase 2 complete (smoke test passed on the real pod)
 - **Last session:** 2026-10-31: folder layout and `.gitignore` files created, repo pushed to GitHub, gateway decision made (Standalone Mode), `docs/workload.md` written, load generator built (`fake_server.py`, `client.py`, `conversation.py`, `run_load.py`) and tested against the fake server. g5.2xlarge launched (since terminated); k3s, NVIDIA toolkit and device plugin working, Kubernetes reports 1 GPU. Quota increase requested (pending), budget alerts set, Hugging Face access granted.
 - **Session 2026-11-01:** Wrote `k8s/vllm-deployment.yaml` and `k8s/vllm-service.yaml`; pod served Llama-3.1-8B through the Service. KV cache 3.2 GiB = 26,176 tokens (1636 blocks of 16). Repeated 2,002-token prompt: cold 0.63 s vs warm 0.18 s, 2,000 of 2,002 tokens hit the cache. Fixed two crashes (see Gotchas). Added `/health` readiness probe. Load generator smoke test (11 requests, 3 conversations, run on the node against the ClusterIP): 0 errors, TTFT P50 0.098 s / P99 0.190 s, TPOT P50 35 ms, cache hit rate 85% (8,832 of 10,389 tokens); added `--model` to `run_load.py`. Clean startup with cached weights: ~103 s to Ready (first start ~3 min incl. 129 s download); needed for autoscaling.
-- **Next step:** Phase 1b (4 replicas) once the g5.12xlarge quota is approved. Meanwhile, on the laptop: write the Phase 3 design note in `docs/`. Remember: precise mode needs vLLM `--block-size 64` (now 16), and real vLLM sends no `x-served-by` header, so requests-per-pod needs another source.
+- **Quota:** 48-vCPU quota approved 2026-11-02; small-machine plan dropped from `plan.md`.
+- **Next step:** Phase 1b: launch the g5.12xlarge and get 4 replicas running (follow `docs/aws-setup.md`). On the laptop, the Phase 3 design note in `docs/` can be written alongside. Block size 64 now in the Deployment; real vLLM sends no `x-served-by` header, so requests-per-pod comes from each pod's `/metrics` counters. The g5.12xlarge launch hit "insufficient capacity" in us-east-2a/b/c on 2026-11-02; retry (default VPC now exists). Phase 3 design note done: `docs/epp-design.md`.
 
 ## Decision log
 
 Newest first. One line each: date, decision, one-phrase reason.
 
+- 2026-11-02: vLLM `--block-size=64` in all three runs (round-robin, approximate, precise), so only routing differs. Pin llm-d `v1.0.0` (GAIE v1.6.2, router chart and EPP v1.0.0); see `docs/epp-design.md`.
+- 2026-11-02: Dropped the small-machine (g5.2xlarge) plan; all remaining GPU work on the g5.12xlarge. Quota for 48 vCPUs approved.
 - 2026-11-01: Model is Llama-3.1-8B-Instruct (gated; needs `hf-token` secret). Matches my notes; ~16 GB weights leaves little KV cache on 24 GB, so keep `--max-model-len` modest.
 - 2026-10-31: llm-d Router in Standalone Mode (Envoy sidecar), no separate gateway. Default tested path, simplest on single-node k3s. Revisit agentgateway only if time allows.
 - 2026-10-31: Setup, model testing, and single-pod work start on a g5.2xlarge while the quota increase for the g5.12xlarge is pending.
@@ -116,7 +118,7 @@ Add problems hit and how they were fixed, so they aren't debugged twice.
 - Pasted long one-line commands wrap in the terminal and break; define shell variables and keep lines short.
 - k3s already creates a `nvidia` RuntimeClass on its own when it finds the toolkit, so no manual RuntimeClass step is needed. The device plugin pod still needs `runtimeClassName: nvidia` patched in, or it can't see the GPU.
 - When pasting multi-line shell blocks (heredocs) from chat, indentation can break the closing `EOF` and leave the shell stuck at a `>` prompt. Press Ctrl+C and use a single-line command instead.
-- llm-d precise mode: vLLM `--block-size` must be 64 and match the router's `blockSizeTokens`.
+- llm-d precise mode: vLLM `--block-size` must be 64 and match the router's `blockSizeTokens`. We use 64 in all runs.
 - llm-d precise mode: the router's `modelName` must exactly match the served model, or render requests are rejected.
 - `peakPrefillThroughput` in the router values was measured on H100s; re-measure on A10G with the guide's calibration step.
 - The router runs as a single replica (its load accounting is per-process).
