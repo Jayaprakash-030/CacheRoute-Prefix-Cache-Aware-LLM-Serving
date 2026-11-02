@@ -1,0 +1,8 @@
+# Namespace: a named folder inside the cluster. Everything in this project
+# (vLLM pods, Service, router, Prometheus) lives in "cacheroute", because the
+# router can only see pods in its own namespace.
+# Apply first, before anything else: sudo k3s kubectl apply -f namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cacheroute

@@ -54,7 +54,7 @@ Planned layout. Mark each entry as created when it exists, and add a one-line de
 | `CLAUDE.md` | This file: project context for AI assistants | created |
 | `plan.md` | Phased plan with checklists | created |
 | `README.md` | Public project overview and results | not created |
-| `k8s/` | Kubernetes manifests: vLLM deployment, Service, router (Standalone), InferencePool, EPP config, Prometheus, HPA | in progress (`vllm-deployment.yaml`, `vllm-service.yaml` done) |
+| `k8s/` | Kubernetes manifests: namespace, vLLM deployment, Service, router (Standalone), InferencePool, EPP config, Prometheus, HPA | in progress (`namespace.yaml`, `vllm-deployment.yaml`, `vllm-service.yaml` done) |
 | `loadgen/` | Multi-turn load generator and fake vLLM test server (`fake_server.py`, `client.py`, `conversation.py`, `run_load.py`, `requirements.txt`, local `.venv`) | done (smoke-tested on a real pod) |
 | `bench/results/` | Raw benchmark output, one folder per run | created (empty) |
 | `bench/analysis/` | Notebooks or scripts that turn results into charts | created (empty) |
@@ -99,6 +99,7 @@ Chat is the core result. Once it is done, add a second workload profile that mim
 
 Newest first. One line each: date, decision, one-phrase reason.
 
+- 2026-11-02: All project objects in one namespace, `cacheroute` (`k8s/namespace.yaml`); the router can only see pods in its own namespace.
 - 2026-11-02: vLLM `--block-size=64` in all three runs (round-robin, approximate, precise), so only routing differs. Pin llm-d `v1.0.0` (GAIE v1.6.2, router chart and EPP v1.0.0); see `docs/epp-design.md`.
 - 2026-11-02: Dropped the small-machine (g5.2xlarge) plan; all remaining GPU work on the g5.12xlarge. Quota for 48 vCPUs approved.
 - 2026-11-01: Model is Llama-3.1-8B-Instruct (gated; needs `hf-token` secret). Matches my notes; ~16 GB weights leaves little KV cache on 24 GB, so keep `--max-model-len` modest.
@@ -130,7 +131,7 @@ Commands confirmed to work go here (start/stop instance, deploy, run a benchmark
 
 Full step-by-step machine setup (launch, GPU check, k3s, device plugin, verify, stop/restart, troubleshooting): `docs/aws-setup.md`. Confirmed on the g5.2xlarge, 2026-10-31. Repeat it for every new instance and for the g5.12xlarge.
 
-vLLM on the instance (from `k8s/`): create the `hf-token` secret (aws-setup.md step 6), then `sudo k3s kubectl apply -f vllm-deployment.yaml -f vllm-service.yaml`. Watch with `sudo k3s kubectl logs -f deploy/vllm` until `Application startup complete`. Test: `curl http://<CLUSTER-IP>:8000/v1/models` (IP from `kubectl get svc vllm`). Cache counters: `curl -s http://<CLUSTER-IP>:8000/metrics | grep -E "^vllm:prefix_cache_(queries|hits)_total"`.
+vLLM on the instance (from `k8s/`): create the `cacheroute` namespace and the `hf-token` secret in it (aws-setup.md step 6), then `sudo k3s kubectl apply -f vllm-deployment.yaml -f vllm-service.yaml`. Every kubectl command needs `-n cacheroute` (e.g. `sudo k3s kubectl -n cacheroute get pods`). Watch with `sudo k3s kubectl -n cacheroute logs -f deploy/vllm` until `Application startup complete`. Test: `curl http://<CLUSTER-IP>:8000/v1/models` (IP from `kubectl -n cacheroute get svc vllm`). Cache counters: `curl -s http://<CLUSTER-IP>:8000/metrics | grep -E "^vllm:prefix_cache_(queries|hits)_total"`.
 
 ## Keeping this file updated
 

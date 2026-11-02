@@ -1,9 +1,10 @@
 # vLLM Deployment: 1 replica, 1 GPU, prefix caching on.
-# Phase 1a. Apply with: sudo k3s kubectl apply -f vllm-deployment.yaml
+# Phase 1a. Apply (after namespace.yaml) with: sudo k3s kubectl apply -f vllm-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: vllm
+  namespace: cacheroute         # all project objects live in this namespace (see namespace.yaml)
   labels:
     app: vllm
 spec:
@@ -39,7 +40,7 @@ spec:
             - name: HF_TOKEN                       # Llama is gated, so the download needs your token
               valueFrom:
                 secretKeyRef:
-                  name: hf-token                   # create first: kubectl create secret generic hf-token --from-literal=token=<your token>
+                  name: hf-token                   # create first, in the cacheroute namespace: kubectl -n cacheroute create secret generic hf-token --from-literal=token=<your token>
                   key: token
           resources:
             limits:

@@ -89,13 +89,14 @@ Llama 3.1 is gated, so the vLLM pod needs your Hugging Face token to download it
 
 1. Get a read-only token from huggingface.co → Settings → Access Tokens. Your account already has Llama access. Keep the token in a password manager.
 2. Type `read -s HFT` and paste the token. Nothing shows on screen, and the token stays out of your shell history. Press Enter.
-3. Create the Secret:
+3. Create the `cacheroute` namespace (the folder all project objects live in; secrets belong to a namespace, so it must exist first), then the Secret inside it:
 
 ```
-sudo k3s kubectl create secret generic hf-token --from-literal=token="$HFT"
+sudo k3s kubectl create namespace cacheroute
+sudo k3s kubectl -n cacheroute create secret generic hf-token --from-literal=token="$HFT"
 ```
 
-4. Check it exists (this prints the name, not the value): `sudo k3s kubectl get secret hf-token`
+4. Check it exists (this prints the name, not the value): `sudo k3s kubectl -n cacheroute get secret hf-token`
 
 The name `hf-token` and key `token` must match `k8s/vllm-deployment.yaml`. A *stopped* instance keeps the Secret; a *terminated* one loses it, so repeat this step on a new instance. Never put the token in the repo or in chat. If it leaks, revoke it on Hugging Face right away.
 
