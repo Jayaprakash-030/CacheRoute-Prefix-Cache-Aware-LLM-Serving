@@ -1,4 +1,6 @@
 # vLLM Deployment: 1 replica, 1 GPU, prefix caching on.
+# The same settings (block size 64, KV-events, render endpoints) are used in all three benchmark runs;
+# only precise routing actually listens to the events.
 # Phase 1a. Apply (after namespace.yaml) with: sudo k3s kubectl apply -f vllm-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -31,10 +33,28 @@ spec:
             - --gpu-memory-utilization=0.90        # share of GPU memory vLLM may claim
             - --block-size=64                      # cache block size in tokens; 64 in all three runs (precise routing needs it, so keep it fixed for fairness)
             - --port=8000
+            - --enable-scale-out                   # serves the /v1/*/render endpoints the precise router uses to tokenize prompts
+            - --disable-access-log-for-endpoints=/health,/metrics,/v1/models,/v1/completions/render,/v1/chat/completions/render   # keep router calls out of the logs
+            - --kv-events-config                   # publish a message whenever a cache block is added or removed (precise routing listens)
+            - '{"enable_kv_cache_events":true,"publisher":"zmq","endpoint":"$(KV_EVENTS_ENDPOINT)","replay_endpoint":"$(KV_EVENTS_REPLAY_ENDPOINT)","topic":"kv@$(POD_IP):$(POD_PORT)@meta-llama/Llama-3.1-8B-Instruct"}'
           ports:
             - containerPort: 8000
               name: http
+            - containerPort: 5556                  # KV-events port (the router connects here)
+              name: kv-events
+            - containerPort: 5559                  # replay port (router re-fetches missed events)
+              name: kv-replay
           env:
+            - name: POD_IP                         # this pod's own IP, filled in by Kubernetes
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: POD_PORT
+              value: "8000"
+            - name: KV_EVENTS_ENDPOINT             # used by --kv-events-config above
+              value: "tcp://*:5556"
+            - name: KV_EVENTS_REPLAY_ENDPOINT
+              value: "tcp://*:5559"
             - name: HF_HOME                        # where Hugging Face downloads model files
               value: /models
             - name: HF_TOKEN                       # Llama is gated, so the download needs your token

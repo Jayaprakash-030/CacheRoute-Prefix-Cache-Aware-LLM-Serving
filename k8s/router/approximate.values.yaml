@@ -1,0 +1,48 @@
+# Router values for APPROXIMATE prefix-cache routing (Phase 3).
+# Layered on top of base.values.yaml. Adapted from llm-d v1.0.0
+# guides/optimized-baseline/router/optimized-baseline.values.yaml.
+#
+# Install (see docs/epp-design.md for the full order):
+#   helm install cacheroute-router oci://ghcr.io/llm-d/charts/llm-d-router-standalone \
+#     --version v1.0.0 -n cacheroute -f base.values.yaml -f approximate.values.yaml
+
+router:
+  # The router's Service also listens on port 80 and forwards to the Envoy
+  # sidecar on 8081. Clients (the load generator) send requests to this port.
+  extraServicePorts:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8081
+
+  epp:
+    # Which plugin config the EPP loads (defined just below).
+    pluginsConfigFile: "approximate-plugins.yaml"
+    pluginsCustomConfig:
+      approximate-plugins.yaml: |
+        apiVersion: llm-d.ai/v1
+        kind: EndpointPickerConfig
+        # Step 1: switch on the plugins we use.
+        plugins:
+        - type: approx-prefix-cache-producer   # guesses which pod holds which prefix
+        - type: inflight-load-producer         # tracks tokens currently being processed per pod
+        - type: prefix-cache-affinity-filter   # keeps pods that hold much of this prompt's prefix
+          parameters:
+            # Filter's TTFT load gate. The guide default (15928) was measured on
+            # H100s, so it is WRONG for the A10G. Replace after running
+            # calibrate.sh on the machine (docs/epp-design.md).
+            peakPrefillThroughput: 15928       # TODO: calibrate on A10G
+        - type: token-load-scorer              # prefers the pod with the least token load
+        # Step 2: say in what order they run for each request.
+        schedulingProfiles:
+        - name: default
+          plugins:
+          - pluginRef: prefix-cache-affinity-filter
+          - pluginRef: token-load-scorer
+
+  # How the router finds the vLLM pods it chooses between.
+  modelServers:
+    matchLabels:
+      app: vllm            # same label our vLLM Deployment puts on its pods
+    targetPorts:
+      - number: 8000       # vLLM's port

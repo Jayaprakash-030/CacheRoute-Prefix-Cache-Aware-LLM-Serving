@@ -54,7 +54,7 @@ Planned layout. Mark each entry as created when it exists, and add a one-line de
 | `CLAUDE.md` | This file: project context for AI assistants | created |
 | `plan.md` | Phased plan with checklists | created |
 | `README.md` | Public project overview and results | not created |
-| `k8s/` | Kubernetes manifests: namespace, vLLM deployment, Service, router (Standalone), InferencePool, EPP config, Prometheus, HPA | in progress (`namespace.yaml`, `vllm-deployment.yaml`, `vllm-service.yaml` done) |
+| `k8s/` | Kubernetes manifests: namespace, vLLM deployment, Service, router (Standalone), InferencePool, EPP config, Prometheus, HPA | in progress (`namespace.yaml`, `vllm-deployment.yaml`, `vllm-service.yaml` done; `router/` has `base.values.yaml`, `approximate.values.yaml`, `precise.values.yaml`, written but untested on a cluster) |
 | `loadgen/` | Multi-turn load generator and fake vLLM test server (`fake_server.py`, `client.py`, `conversation.py`, `run_load.py`, `requirements.txt`, local `.venv`) | done (smoke-tested on a real pod) |
 | `bench/results/` | Raw benchmark output, one folder per run | created (empty) |
 | `bench/analysis/` | Notebooks or scripts that turn results into charts | created (empty) |
@@ -99,6 +99,7 @@ Chat is the core result. Once it is done, add a second workload profile that mim
 
 Newest first. One line each: date, decision, one-phrase reason.
 
+- 2026-11-02: One vLLM Deployment for all three runs, with KV-events, render endpoints and block size 64 always on (identical vLLM settings); only the router changes. If this slows the baseline noticeably, move the extra flags into a precise-only patch.
 - 2026-11-02: All project objects in one namespace, `cacheroute` (`k8s/namespace.yaml`); the router can only see pods in its own namespace.
 - 2026-11-02: vLLM `--block-size=64` in all three runs (round-robin, approximate, precise), so only routing differs. Pin llm-d `v1.0.0` (GAIE v1.6.2, router chart and EPP v1.0.0); see `docs/epp-design.md`.
 - 2026-11-02: Dropped the small-machine (g5.2xlarge) plan; all remaining GPU work on the g5.12xlarge. Quota for 48 vCPUs approved.

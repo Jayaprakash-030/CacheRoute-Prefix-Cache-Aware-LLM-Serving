@@ -1,0 +1,92 @@
+# Router values for PRECISE prefix-cache routing (Phase 3).
+# Layered on top of base.values.yaml. Adapted from llm-d v1.0.0
+# guides/precise-prefix-cache-routing/router/precise-prefix-cache-routing.values.yaml.
+#
+# Install (see docs/epp-design.md):
+#   helm install cacheroute-router oci://ghcr.io/llm-d/charts/llm-d-router-standalone \
+#     --version v1.0.0 -n cacheroute -f base.values.yaml -f precise.values.yaml
+# Needs the vLLM pods to publish KV-events and serve /render endpoints
+# (see the flags in k8s/vllm-deployment.yaml).
+
+router:
+  extraServicePorts:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8081
+
+  epp:
+    # One router replica only: its in-flight load accounting is per process.
+    replicas: 1
+    flags:
+      # Stops the chart switching on leader election (only needed with replicas > 1).
+      ha-enable-leader-election: false
+    env:
+      - name: HF_TOKEN               # lets the router fetch model files if it needs them
+        valueFrom:
+          secretKeyRef:
+            name: hf-token           # our existing secret (guide calls it llm-d-hf-token)
+            key: token               # our key name (guide uses HF_TOKEN)
+
+    pluginsConfigFile: "precise-plugins.yaml"
+    pluginsCustomConfig:
+      precise-plugins.yaml: |
+        apiVersion: llm-d.ai/v1
+        kind: EndpointPickerConfig
+        plugins:
+        # Turns prompt text into exact token IDs by asking one of our vLLM pods
+        # to "render" it (/v1/*/render). modelName MUST equal the served model.
+        - type: token-producer
+          parameters:
+            modelName: meta-llama/Llama-3.1-8B-Instruct
+            vllm:
+              endpointDiscovery:
+                attemptTimeout: 2s
+              messagesRenderMode: auto
+              responsesRenderMode: auto
+        # Hears about pods joining/leaving, so the cache index can connect to them.
+        - type: endpoint-notification-source
+        # Keeps a live index of which pod holds which cache blocks, fed by the
+        # KV-events each vLLM pod publishes.
+        - type: precise-prefix-cache-producer
+          parameters:
+            tokenProcessorConfig:
+              blockSizeTokens: 64         # MUST equal vLLM --block-size
+              hashAlgorithm: xxh64
+            speculativeIndexing: true     # add a provisional entry right after each routing decision
+            indexerConfig:
+              kvBlockIndexConfig:
+                enableMetrics: true
+            kvEventsConfig:
+              engineType: "vllm"
+              topicFilter: "kv@"
+              concurrency: 8
+              discoverPods: true
+              podDiscoveryConfig:
+                socketPort: 5556          # vLLM's KV-events port
+                replaySocketPort: 5559    # port to replay missed events
+        - type: inflight-load-producer
+          parameters:
+            prefixMatchInfoProducerName: precise-prefix-cache-producer
+        - type: prefix-cache-affinity-filter
+          parameters:
+            prefixMatchInfoProducerName: precise-prefix-cache-producer
+            # Guide value was measured on H100s. Replace after calibrate.sh on the A10G.
+            peakPrefillThroughput: 15926      # TODO: calibrate on A10G
+        - type: token-load-scorer
+        dataLayer:
+          sources:
+            - pluginRef: endpoint-notification-source
+              extractors:
+                - pluginRef: precise-prefix-cache-producer
+        schedulingProfiles:
+        - name: default
+          plugins:
+          - pluginRef: prefix-cache-affinity-filter
+          - pluginRef: token-load-scorer
+
+  modelServers:
+    matchLabels:
+      app: vllm
+    targetPorts:
+      - number: 8000
